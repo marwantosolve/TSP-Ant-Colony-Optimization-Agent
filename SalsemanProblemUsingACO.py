@@ -2,9 +2,8 @@ import numpy as np
 import random
 
 
-# --- 1. Distance Generation ---
+# Distance Generation
 def generate_distance_matrix(num_cities, min_dist=3, max_dist=50):
-    """Generates a symmetric distance matrix for a given number of cities."""
     if num_cities <= 0:
         return np.array([])
     distances = np.zeros((num_cities, num_cities))
@@ -19,7 +18,6 @@ def generate_distance_matrix(num_cities, min_dist=3, max_dist=50):
     return distances
 
 
-# --- Show generated distances (as required) ---
 print("--- Generating Distances ---")
 NUM_CITIES_10 = 10
 distances_10_cities = generate_distance_matrix(NUM_CITIES_10)
@@ -33,7 +31,7 @@ print(distances_20_cities)
 print("-" * 30)
 
 
-# --- 2. ACO Algorithm Implementation ---
+# ACO Algorithm Implementation
 class AntColonyOptimizer:
     def __init__(
         self,
@@ -61,29 +59,30 @@ class AntColonyOptimizer:
         self.initial_pheromone = initial_pheromone
 
         # Heuristic information (eta = 1/distance)
-        # Add a small epsilon to avoid division by zero if any distance is 0 (though our generator prevents this)
+        # Add a small epsilon to avoid division by zero 
         epsilon = 1e-10
         self.eta = 1.0 / (distances + epsilon)
         np.fill_diagonal(self.eta, 0)  # No heuristic value for staying in the same city
 
         # Pheromone matrix, initialized
+        # make all cities phermone with initial phermone value
         self.pheromones = np.full(
             (self.n_cities, self.n_cities), self.initial_pheromone
         )
+        # the diagonal in city matrix is 0 so it has no phermone too as it's same city
         np.fill_diagonal(
             self.pheromones, 0
-        )  # No pheromone for staying in the same city
+        )
 
         self.best_tour = None
         self.best_tour_length = float("inf")
 
     def _select_next_city(self, current_city, visited_cities, ant_pheromones):
-        """Probabilistically selects the next city for an ant to visit."""
         probabilities = []
         unvisited_cities = []
 
         # Calculate numerators for probability calculation
-        # P(i,j) = (τ[i][j]^α * η[i][j]^β)
+        # P(i,j) = (τ[i][j] * η[i][j])
         for city_idx in range(self.n_cities):
             if not visited_cities[city_idx]:
                 unvisited_cities.append(city_idx)
@@ -92,19 +91,18 @@ class AntColonyOptimizer:
                 prob_numerator = (tau_ij) * (eta_ij)
                 probabilities.append(prob_numerator)
 
-        if not unvisited_cities:  # Should not happepyn if tour is not complete
+        # If all cities are visited, return None
+        if not unvisited_cities:
             return None
 
         # Normalize probabilities
         sum_probs = sum(probabilities)
-        if (
-            sum_probs == 0
-        ):  # Fallback: if all probabilities are zero (e.g., no pheromone)
-            # then choose randomly among unvisited cities
+        if sum_probs == 0:
+            # If all probabilities are zero, select a random unvisited city
             if unvisited_cities:
                 return random.choice(unvisited_cities)
             else:
-                return None  # Should not be reached
+                return None
 
         probabilities = [p / sum_probs for p in probabilities]
 
@@ -113,7 +111,6 @@ class AntColonyOptimizer:
         return next_city
 
     def _construct_tour(self, start_city, ant_pheromones):
-        """Constructs a tour for a single ant starting from start_city."""
         tour = [start_city]
         current_city = start_city
         visited_cities = np.zeros(self.n_cities, dtype=bool)
@@ -124,7 +121,7 @@ class AntColonyOptimizer:
             next_city = self._select_next_city(
                 current_city, visited_cities, ant_pheromones
             )
-            if next_city is None:  # Should not happen in a valid TSP setup
+            if next_city is None:
                 break
             tour.append(next_city)
             visited_cities[next_city] = True
@@ -138,7 +135,6 @@ class AntColonyOptimizer:
         return tour, tour_length
 
     def _update_pheromones(self, ant_tours):
-        """Updates pheromone trails based on ant tours and evaporation."""
         # 1. Evaporation
         self.pheromones *= 1.0 - self.rho
 
@@ -155,7 +151,6 @@ class AntColonyOptimizer:
                 self.pheromones[city2_idx, city1_idx] += pheromone_deposit  # Symmetric
 
     def run(self):
-        """Runs the ACO algorithm."""
         if self.n_cities == 0:
             print("No cities to run ACO on.")
             return [], float("inf")
@@ -170,11 +165,8 @@ class AntColonyOptimizer:
 
             # Each ant constructs a tour
             for ant_id in range(self.n_ants):
-                # Start city can be random for each ant or fixed (e.g., ant_id % n_cities)
-                # For simplicity here, let each ant pick a random start
-                # Or, to ensure diversity if n_ants <= n_cities:
+                # Randomly select a starting city for each ant
                 start_city = ant_id % self.n_cities
-                # start_city = random.randint(0, self.n_cities - 1)
 
                 # Ants should use the global pheromone trails for decisions
                 tour, tour_length = self._construct_tour(start_city, self.pheromones)
@@ -198,75 +190,69 @@ class AntColonyOptimizer:
         return self.best_tour, self.best_tour_length
 
 
-# --- 3. Main Execution Block ---
-def run_experiments():
-    # --- ACO Parameters (can be tuned) ---
-    RHO = 0.3  # Pheromone evaporation rate
-    Q_VAL = 100.0  # Pheromone deposit factor (adjust based on expected tour lengths)
-    N_ITERATIONS = 50
-    INITIAL_PHEROMONE = 1.0
 
-    city_configs = [
-        {
-            "name": "10 Cities",
-            "num_cities": NUM_CITIES_10,
-            "distances": distances_10_cities,
-        },
-        {
-            "name": "20 Cities",
-            "num_cities": NUM_CITIES_20,
-            "distances": distances_20_cities,
-        },
-    ]
-    ant_agent_counts = [1, 5, 10, 20]
+# ACO Parameters
+RHO = 0.3  # Pheromone evaporation rate
+Q_VAL = 100.0  # Pheromone deposit factor
+N_ITERATIONS = 50
+INITIAL_PHEROMONE = 1.0
 
-    results = {}
+city_configs = [
+    {
+        "name": "10 Cities",
+        "num_cities": NUM_CITIES_10,
+        "distances": distances_10_cities,
+    },
+    {
+        "name": "20 Cities",
+        "num_cities": NUM_CITIES_20,
+        "distances": distances_20_cities,
+    },
+]
+ant_agent_counts = [1, 5, 10, 20]
 
-    for config in city_configs:
-        print(f"\n{'='*10} EXPERIMENTS FOR {config['name']} {'='*10}")
-        current_distances = config["distances"]
-        results[config["name"]] = {}
+results = {}
 
-        for n_ants in ant_agent_counts:
-            if n_ants > config["num_cities"] and config["num_cities"] > 0:
-                print(
-                    f"\nAdjusting number of ants from {n_ants} to {config['num_cities']} "
-                    f"as n_ants cannot exceed n_cities for the chosen start_city assignment logic."
-                )
-                current_n_ants = config["num_cities"]
-            else:
-                current_n_ants = n_ants
+for config in city_configs:
+    print(f"\n{'='*10} EXPERIMENTS FOR {config['name']} {'='*10}")
+    current_distances = config["distances"]
+    results[config["name"]] = {}
 
-            if config["num_cities"] == 0:  # Skip if no cities (e.g. bad generation)
-                print(f"\nSkipping {n_ants} ants for {config['name']} due to 0 cities.")
-                continue
-
+    for n_ants in ant_agent_counts:
+        if n_ants > config["num_cities"] and config["num_cities"] > 0:
             print(
-                f"\n--- Running with {current_n_ants} Ant(s) for {config['name']} ---"
+                f"\nAdjusting number of ants from {n_ants} to {config['num_cities']} "
+                f"as n_ants cannot exceed n_cities for the chosen start_city assignment logic."
             )
-            aco = AntColonyOptimizer(
-                distances=current_distances,
-                n_ants=current_n_ants,
-                n_iterations=N_ITERATIONS,
-                rho=RHO,
-                q_val=Q_VAL,
-                initial_pheromone=INITIAL_PHEROMONE,
-            )
-            best_tour, best_length = aco.run()
-            results[config["name"]][f"{current_n_ants} Ants"] = {
-                "tour": best_tour,
-                "length": best_length,
-            }
+            current_n_ants = config["num_cities"]
+        else:
+            current_n_ants = n_ants
+        if config["num_cities"] == 0:  # Skip if no cities (e.g. bad generation)
+            print(f"\nSkipping {n_ants} ants for {config['name']} due to 0 cities.")
+            continue
 
-    print("\n\n" + "=" * 20 + " FINAL RESULTS SUMMARY " + "=" * 20)
-    for city_set_name, ant_results in results.items():
-        print(f"\nResults for {city_set_name}:")
-        for ant_config_name, result_data in ant_results.items():
-            print(f"  {ant_config_name}:")
-            print(f"    Best Tour Length: {result_data['length']:.2f}")
-            print(f"    Best Tour Path: {result_data['tour']}")
-        print("-" * 20)
+        print(
+            f"\n--- Running with {current_n_ants} Ant(s) for {config['name']} ---"
+        )
+        aco = AntColonyOptimizer(
+            distances=current_distances,
+            n_ants=current_n_ants,
+            n_iterations=N_ITERATIONS,
+            rho=RHO,
+            q_val=Q_VAL,
+            initial_pheromone=INITIAL_PHEROMONE,
+        )
+        best_tour, best_length = aco.run()
+        results[config["name"]][f"{current_n_ants} Ants"] = {
+            "tour": best_tour,
+            "length": best_length,
+        }
 
-
-
-run_experiments()
+print("\n\n" + "=" * 20 + " FINAL RESULTS SUMMARY " + "=" * 20)
+for city_set_name, ant_results in results.items():
+    print(f"\nResults for {city_set_name}:")
+    for ant_config_name, result_data in ant_results.items():
+        print(f"  {ant_config_name}:")
+        print(f"    Best Tour Length: {result_data['length']:.2f}")
+        print(f"    Best Tour Path: {result_data['tour']}")
+    print("-" * 20)
