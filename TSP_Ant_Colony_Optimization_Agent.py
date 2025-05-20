@@ -10,7 +10,6 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import pickle
-
 # Redirect output to a file
 output_filename = f"results.txt"
 sys.stdout = open(output_filename, "w")
